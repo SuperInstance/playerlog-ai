@@ -1,0 +1,22 @@
+{
+  "name": "playerlog-ai",
+  "displayName": "Playerlog",
+  "version": "1.0.0",
+  "type": "cocapn-vessel",
+  "category": "lifestyle",
+  "description": "AI-powered Playerlog companion",
+  "icon": "ship",
+  "endpoints": [
+    "/",
+    "/health",
+    "/vessel.json"
+  ],
+  "deployment": {
+    "platform": "cloudflare-workers",
+    "url": "https://playerlog-ai.casey-digennaro.workers.dev"
+  },
+  "capabilities": [
+    "gaming-logs",
+    "coaching-tools"
+  ]
+}

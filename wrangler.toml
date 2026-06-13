@@ -1,9 +1,8 @@
-name = "playerlog-ai-worker"
+name = "playerlog-ai"
+account_id = "049ff5e84ecf636b53b162cbb580aae6"
 main = "src/worker.ts"
 compatibility_date = "2024-12-01"
-[vars]
-VERSION = "0.2.0"
 
-[[custom_domains]]
-pattern = "playerlog.ai"
-zone_name = "playerlog.ai"
+[[kv_namespaces]]
+binding = "PLAYERLOG_KV"
+id = "664b61a8365441c298645acfe94ff8b4"

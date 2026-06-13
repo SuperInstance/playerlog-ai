@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>PlayerLog.ai — Your AI Gaming Coach Remembers Everything</title>
+  <meta name="description" content="AI-powered gaming coach with session tracking, build optimization, meta analysis, and personalized coaching. Free, open source, encrypted.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+  <meta name="theme-color" content="#0F0F0F">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0F0F0F;
+      --bg-card: #1A1A2E;
+      --bg-input: #16162A;
+      --purple: #A855F7;
+      --purple-dim: #7C3AED;
+      --cyan: #06B6D4;
+      --cyan-dim: #0891B2;
+      --green: #22C55E;
+      --red: #EF4444;
+      --yellow: #EAB308;
+      --text: #F1F5F9;
+      --text-dim: #94A3B8;
+      --text-muted: #64748B;
+      --border: #2D2D44;
+      --radius: 12px;
+      --font: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+    html, body { height: 100%; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Layout */
+    #app { display: flex; height: 100vh; }
+    .sidebar {
+      width: 260px; min-width: 260px;
+      background: var(--bg-card);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow-y: auto;
+    }
+    .sidebar-brand {
+      padding: 20px 16px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-brand span { font-size: 1.3rem; }
+    .sidebar-brand strong { font-size: 1rem; color: var(--purple); letter-spacing: -0.5px; }
+    .nav-section { padding: 12px 0; }
+    .nav-section-title {
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px;
+      color: var(--text-muted); padding: 4px 16px; margin-bottom: 2px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 16px; cursor: pointer; color: var(--text-dim);
+      transition: all 0.15s; font-size: 0.9rem; border-left: 3px solid transparent;
+    }
+    .nav-item:hover { background: rgba(168,85,247,0.08); color: var(--text); }
+    .nav-item.active { color: var(--purple); background: rgba(168,85,247,0.1); border-left-color: var(--purple); }
+    .nav-item .icon { font-size: 1.1rem; width: 22px; text-align: center; }
+
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .main-header {
+      padding: 14px 24px; display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border); background: var(--bg-card);
+    }
+    .main-header h1 { font-size: 1.1rem; font-weight: 600; }
+    .main-content { flex: 1; overflow-y: auto; padding: 24px; }
+
+    /* Cards */
+    .card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--text-muted); margin-bottom: 12px; font-weight: 600;
+    }
+
+    /* Stats grid */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .stat-box {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px;
+    }
+    .stat-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 1.6rem; font-weight: 700; margin-top: 4px; }
+    .stat-value.purple { color: var(--purple); }
+    .stat-value.cyan { color: var(--cyan); }
+    .stat-value.green { color: var(--green); }
+    .stat-value.red { color: var(--red); }
+    .stat-sub { font-size: 0.8rem; color: var(--text-dim); margin-top: 2px; }
+
+    /* Session logger form */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group label { font-size: 0.8rem; color: var(--text-dim); font-weight: 500; }
+    .form-group input, .form-group select, .form-group textarea {
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px; color: var(--text);
+      font-family: var(--font); font-size: 0.9rem; outline: none;
+      transition: border-color 0.15s;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      border-color: var(--purple);
+    }
+    .form-group textarea { resize: vertical; min-height: 60px; }
+    .form-group select option { background: var(--bg-card); }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 20px; border-radius: 8px; font-size: 0.9rem;
+      font-weight: 600; cursor: pointer; border: none; transition: all 0.15s;
+      font-family: var(--font);
+    }
+    .btn-purple { background: var(--purple); color: #fff; }
+    .btn-purple:hover { background: var(--purple-dim); }
+    .btn-cyan { background: var(--cyan); color: #fff; }
+    .btn-cyan:hover { background: var(--cyan-dim); }
+    .btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--purple); color: var(--purple); }
+    .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
+
+    /* Build table */
+    .build-table { width: 100%; border-collapse: collapse; }
+    .build-table th { text-align: left; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+    .build-table td { padding: 10px 12px; border-bottom: 1px solid rgba(45,45,68,0.5); font-size: 0.9rem; }
+    .build-table tr:hover td { background: rgba(168,85,247,0.05); }
+    .win-bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; min-width: 80px; }
+    .win-bar-fill { height: 100%; border-radius: 3px; background: var(--green); transition: width 0.3s; }
+
+    /* Rank progression */
+    .rank-track { display: flex; align-items: flex-end; gap: 2px; height: 120px; padding: 12px 0; }
+    .rank-bar {
+      flex: 1; min-width: 24px; border-radius: 4px 4px 0 0;
+      background: linear-gradient(to top, var(--purple-dim), var(--purple));
+      transition: height 0.3s; position: relative; cursor: default;
+    }
+    .rank-bar:hover { opacity: 0.85; }
+    .rank-bar .tooltip {
+      display: none; position: absolute; bottom: calc(100% + 6px); left: 50%;
+      transform: translateX(-50%); background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: 6px; padding: 4px 8px; font-size: 0.7rem; white-space: nowrap; z-index: 10;
+    }
+    .rank-bar:hover .tooltip { display: block; }
+
+    /* Coaching chat */
+    .chat-container { display: flex; flex-direction: column; height: calc(100vh - 120px); }
+    .chat-messages { flex: 1; overflow-y: auto; padding: 16px 0; }
+    .chat-msg { display: flex; gap: 10px; margin-bottom: 16px; max-width: 85%; }
+    .chat-msg.user { margin-left: auto; flex-direction: row-reverse; }
+    .chat-avatar {
+      width: 32px; height: 32px; border-radius: 50%; display: flex;
+      align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0;
+    }
+    .chat-msg.coach .chat-avatar { background: var(--purple); }
+    .chat-msg.user .chat-avatar { background: var(--cyan); }
+    .chat-bubble {
+      padding: 10px 14px; border-radius: 12px; font-size: 0.9rem; line-height: 1.5;
+    }
+    .chat-msg.coach .chat-bubble { background: var(--bg-card); border: 1px solid var(--border); }
+    .chat-msg.user .chat-bubble { background: rgba(6,182,212,0.15); border: 1px solid rgba(6,182,212,0.3); }
+    .chat-input-row {
+      display: flex; gap: 8px; padding: 12px 0 0 0;
+      border-top: 1px solid var(--border);
+    }
+    .chat-input-row input {
+      flex: 1; background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 0.9rem;
+      font-family: var(--font); outline: none;
+    }
+    .chat-input-row input:focus { border-color: var(--cyan); }
+
+    /* Meta grid */
+    .meta-char-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+    .meta-char {
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px; text-align: center;
+      transition: border-color 0.15s;
+    }
+    .meta-char:hover { border-color: var(--purple); }
+    .meta-char-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
+    .meta-char-wr { font-size: 0.8rem; color: var(--green); }
+    .meta-char-pr { font-size: 0.8rem; color: var(--text-dim); }
+
+    /* Weakness cards */
+    .weakness-card {
+      border-left: 3px solid; border-radius: 0 var(--radius) var(--radius) 0;
+      padding: 14px 16px; margin-bottom: 10px; background: var(--bg-input);
+    }
+    .weakness-card.high { border-color: var(--red); }
+    .weakness-card.medium { border-color: var(--yellow); }
+    .weakness-card.low { border-color: var(--cyan); }
+    .weakness-cat { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+    .weakness-desc { font-size: 0.95rem; margin: 4px 0; }
+    .weakness-tip { font-size: 0.8rem; color: var(--text-dim); }
+
+    /* Tip card */
+    .tip-card {
+      background: linear-gradient(135deg, rgba(168,85,247,0.15), rgba(6,182,212,0.1));
+      border: 1px solid var(--purple-dim); border-radius: var(--radius);
+      padding: 16px 20px; margin-bottom: 12px;
+    }
+    .tip-card .tip-label { font-size: 0.7rem; color: var(--purple); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+    .tip-card .tip-text { font-size: 0.95rem; margin-top: 6px; line-height: 1.6; }
+
+    /* Tab bar */
+    .tab-bar { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+    .tab-item {
+      padding: 10px 18px; font-size: 0.85rem; cursor: pointer;
+      color: var(--text-dim); border-bottom: 2px solid transparent;
+      transition: all 0.15s; font-weight: 500;
+    }
+    .tab-item:hover { color: var(--text); }
+    .tab-item.active { color: var(--purple); border-bottom-color: var(--purple); }
+
+    /* Trend badge */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 0.75rem; font-weight: 600; padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .badge-green { background: rgba(34,197,94,0.15); color: var(--green); }
+    .badge-red { background: rgba(239,68,68,0.15); color: var(--red); }
+    .badge-yellow { background: rgba(234,179,8,0.15); color: var(--yellow); }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .form-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <nav class="sidebar">
+      <div class="sidebar-brand">
+        <span>🎮</span>
+        <strong>PlayerLog.ai</strong>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">Dashboard</div>
+        <div class="nav-item active" data-page="dashboard"><span class="icon">📊</span> Overview</div>
+        <div class="nav-item" data-page="logger"><span class="icon">📝</span> Game Logger</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">Analysis</div>
+        <div class="nav-item" data-page="builds"><span class="icon">🔧</span> Build Optimizer</div>
+        <div class="nav-item" data-page="meta"><span class="icon">📈</span> Meta Tracker</div>
+        <div class="nav-item" data-page="rank"><span class="icon">🏆</span> Rank Progression</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">Coaching</div>
+        <div class="nav-item" data-page="coach"><span class="icon">💬</span> AI Coach Chat</div>
+        <div class="nav-item" data-page="weakness"><span class="icon">🔍</span> Weakness Report</div>
+        <div class="nav-item" data-page="tips"><span class="icon">🧠</span> Mental Game</div>
+      </div>
+    </nav>
+
+    <div class="main">
+      <header class="main-header">
+        <h1 id="page-title">Dashboard</h1>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="font-size:0.8rem;color:var(--text-dim)" id="user-info"></span>
+        </div>
+      </header>
+
+      <div class="main-content" id="page-content">
+        <!-- Pages rendered here by JS -->
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    const API = '/v1';
+    let currentPage = 'dashboard';
+    let state = { games: [], meta: null, stats: null, chatHistory: [] };
+
+    // ─── Navigation ───────────────────────────────────────────────────────
+    document.querySelectorAll('.nav-item').forEach(el => {
+      el.addEventListener('click', () => navigate(el.dataset.page));
+    });
+
+    function navigate(page) {
+      currentPage = page;
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
+      const titles = {
+        dashboard: 'Dashboard', logger: 'Game Logger', builds: 'Build Optimizer',
+        meta: 'Meta Tracker', rank: 'Rank Progression', coach: 'AI Coach Chat',
+        weakness: 'Weakness Report', tips: 'Mental Game Tips',
+      };
+      document.getElementById('page-title').textContent = titles[page] || page;
+      render();
+    }
+
+    async function apiFetch(path, opts = {}) {
+      const res = await fetch(`${API}${path}`, {
+        headers: { 'Content-Type': 'application/json', ...opts.headers },
+        ...opts,
+      });
+      return res.json();
+    }
+
+    // ─── Render dispatcher ────────────────────────────────────────────────
+    async function render() {
+      const el = document.getElementById('page-content');
+      switch (currentPage) {
+        case 'dashboard': await renderDashboard(el); break;
+        case 'logger': renderLogger(el); break;
+        case 'builds': await renderBuilds(el); break;
+        case 'meta': await renderMeta(el); break;
+        case 'rank': await renderRank(el); break;
+        case 'coach': renderCoach(el); break;
+        case 'weakness': await renderWeakness(el); break;
+        case 'tips': renderTips(el); break;
+      }
+    }
+
+    // ─── Dashboard ────────────────────────────────────────────────────────
+    async function renderDashboard(el) {
+      el.innerHTML = '<div style="color:var(--text-dim)">Loading stats...</div>';
+      try {
+        const data = await apiFetch('/app/gaming/stats');
+        state.stats = data;
+      } catch { state.stats = null; }
+
+      el.innerHTML = `
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-label">Total Games</div>
+            <div class="stat-value purple">${state.stats?.totalGames ?? '—'}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Win Rate</div>
+            <div class="stat-value ${((state.stats?.winRate ?? 0) >= 0.5) ? 'green' : 'red'}">${state.stats ? (state.stats.winRate * 100).toFixed(1) + '%' : '—'}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Avg KDA</div>
+            <div class="stat-value cyan">${state.stats ? `${state.stats.avgKDA.kills.toFixed(1)}/${state.stats.avgKDA.deaths.toFixed(1)}/${state.stats.avgKDA.assists.toFixed(1)}` : '—'}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Best Character</div>
+            <div class="stat-value" style="font-size:1.2rem">${state.stats?.bestCharacter ?? '—'}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Avg Duration</div>
+            <div class="stat-value" style="font-size:1.2rem">${state.stats ? state.stats.avgDurationMin.toFixed(0) + ' min' : '—'}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Trend</div>
+            <div class="stat-value" style="font-size:1.1rem">${state.stats?.trend ? `<span class="badge badge-${state.stats.trend === 'climbing' ? 'green' : state.stats.trend === 'declining' ? 'red' : 'yellow'}">${state.stats.trend}</span>` : '—'}</div>
+          </div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-label">Daily Tip</div>
+          <div class="tip-text">${getRandomTip()}</div>
+        </div>
+      `;
+    }
+
+    function getRandomTip() {
+      const tips = [
+        'Take a 10-minute break after 2 consecutive losses. Your decision-making degrades faster than you notice.',
+        'Warm up with 1-2 casual games before ranked. Cold starts cost MMR.',
+        'Review at least one replay per session. Active review accelerates improvement 3x over just playing.',
+        'Focus on improving your play, not your rank. Rank is a lagging indicator of skill.',
+        'Play in blocks of 2-3 games, then take a 5-minute break. Sustained focus degrades after ~90 minutes.',
+      ];
+      return tips[Math.floor(Math.random() * tips.length)];
+    }
+
+    // ─── Game Logger ──────────────────────────────────────────────────────
+    function renderLogger(el) {
+      el.innerHTML = `
+        <div class="card">
+          <div class="card-title">Log New Game</div>
+          <form id="log-form">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Game</label>
+                <select name="game" required>
+                  <option value="valorant">Valorant</option>
+                  <option value="lol">League of Legends</option>
+                  <option value="cs2">CS2</option>
+                  <option value="apex">Apex Legends</option>
+                  <option value="overwatch">Overwatch 2</option>
+                  <option value="dota2">Dota 2</option>
+                  <option value="r6siege">Rainbow Six Siege</option>
+                  <option value="rocket-league">Rocket League</option>
+                  <option value="fortnite">Fortnite</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Mode</label>
+                <select name="mode">
+                  <option value="ranked">Ranked</option>
+                  <option value="casual">Casual</option>
+                  <option value="competitive">Competitive (scrims/tourney)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Result</label>
+                <select name="result" required>
+                  <option value="win">Win</option>
+                  <option value="loss">Loss</option>
+                  <option value="draw">Draw</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Duration (min)</label>
+                <input type="number" name="duration" min="1" max="180" value="30">
+              </div>
+              <div class="form-group">
+                <label>Character / Agent</label>
+                <input type="text" name="character" placeholder="e.g. Jett, Sage...">
+              </div>
+              <div class="form-group">
+                <label>Build / Loadout</label>
+                <input type="text" name="build" placeholder="e.g. Phantom + Sheriff">
+              </div>
+              <div class="form-group">
+                <label>Rank</label>
+                <input type="text" name="rank" placeholder="e.g. Gold 2">
+              </div>
+              <div class="form-group">
+                <label>K / D / A</label>
+                <div style="display:flex;gap:6px">
+                  <input type="number" name="kills" min="0" placeholder="K" style="width:60px">
+                  <input type="number" name="deaths" min="0" placeholder="D" style="width:60px">
+                  <input type="number" name="assists" min="0" placeholder="A" style="width:60px">
+                </div>
+              </div>
+              <div class="form-group full">
+                <label>Notes</label>
+                <textarea name="notes" placeholder="What happened? Key moments, mistakes, things to remember..."></textarea>
+              </div>
+            </div>
+            <div style="margin-top:16px;display:flex;gap:8px">
+              <button type="submit" class="btn btn-purple">Log Game</button>
+              <button type="reset" class="btn btn-ghost">Clear</button>
+            </div>
+          </form>
+        </div>
+        <div id="recent-sessions"></div>
+      `;
+
+      document.getElementById('log-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const body = {
+          game: fd.get('game'), mode: fd.get('mode'), result: fd.get('result'),
+          durationMin: +fd.get('duration'), character: fd.get('character') || undefined,
+          build: fd.get('build') || undefined, rank: fd.get('rank') || undefined,
+          kills: fd.get('kills') ? +fd.get('kills') : undefined,
+          deaths: fd.get('deaths') ? +fd.get('deaths') : undefined,
+          assists: fd.get('assists') ? +fd.get('assists') : undefined,
+          notes: fd.get('notes') || '',
+        };
+        try {
+          await apiFetch('/app/gaming/sessions', { method: 'POST', body: JSON.stringify(body) });
+          e.target.reset();
+          alert('Game logged!');
+          loadRecentSessions();
+        } catch (err) { alert('Failed: ' + err.message); }
+      });
+      loadRecentSessions();
+    }
+
+    async function loadRecentSessions() {
+      const el = document.getElementById('recent-sessions');
+      if (!el) return;
+      try {
+        const data = await apiFetch('/app/gaming/sessions');
+        const sessions = data.sessions ?? [];
+        if (!sessions.length) { el.innerHTML = '<div class="card"><div style="color:var(--text-dim);text-align:center;padding:20px">No games logged yet. Start logging!</div></div>'; return; }
+        el.innerHTML = `<div class="card"><div class="card-title">Recent Games</div>
+          <table class="build-table"><thead><tr><th>Game</th><th>Character</th><th>Result</th><th>KDA</th><th>Duration</th><th>Notes</th></tr></thead>
+          <tbody>${sessions.slice(0, 20).map(s => `<tr>
+            <td>${s.game}</td><td>${s.character || '—'}</td>
+            <td><span class="badge badge-${s.result === 'win' ? 'green' : s.result === 'loss' ? 'red' : 'yellow'}">${s.result}</span></td>
+            <td>${s.kills ?? '—'}/${s.deaths ?? '—'}/${s.assists ?? '—'}</td>
+            <td>${s.durationMin}m</td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-dim)">${s.notes || '—'}</td>
+          </tr>`).join('')}</tbody></table></div>`;
+      } catch { el.innerHTML = ''; }
+    }
+
+    // ─── Build Optimizer ──────────────────────────────────────────────────
+    async function renderBuilds(el) {
+      el.innerHTML = `
+        <div class="card">
+          <div class="card-title">Build Optimizer</div>
+          <div style="display:flex;gap:10px;margin-bottom:16px">
+            <select id="build-game" class="btn btn-ghost btn-sm">
+              <option value="valorant">Valorant</option><option value="lol">League of Legends</option>
+              <option value="cs2">CS2</option><option value="apex">Apex Legends</option>
+              <option value="overwatch">Overwatch 2</option>
+            </select>
+            <input id="build-character" placeholder="Character name..." style="background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-family:var(--font)">
+            <button class="btn btn-purple btn-sm" id="build-search">Find Builds</button>
+          </div>
+          <div id="build-results"><div style="color:var(--text-dim)">Enter a game and character to find top-performing builds.</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Your Build Performance</div>
+          <div id="my-builds"><div style="color:var(--text-dim)">Loading...</div></div>
+        </div>
+      `;
+      document.getElementById('build-search').addEventListener('click', async () => {
+        const game = document.getElementById('build-game').value;
+        const character = document.getElementById('build-character').value;
+        const resEl = document.getElementById('build-results');
+        if (!character) { resEl.innerHTML = '<div style="color:var(--yellow)">Enter a character name.</div>'; return; }
+        resEl.innerHTML = '<div style="color:var(--text-dim)">Searching...</div>';
+        try {
+          const data = await apiFetch(`/app/gaming/builds?game=${game}&character=${encodeURIComponent(character)}`);
+          const builds = data.builds ?? [];
+          if (!builds.length) { resEl.innerHTML = '<div style="color:var(--text-dim)">No builds found for this character.</div>'; return; }
+          resEl.innerHTML = `<table class="build-table"><thead><tr><th>Build</th><th>Win Rate</th><th>Pick Rate</th><th>Games</th></tr></thead>
+            <tbody>${builds.map(b => `<tr><td>${b.build}</td><td><div class="win-bar"><div class="win-bar-fill" style="width:${b.winRate * 100}%"></div></div>${(b.winRate*100).toFixed(1)}%</td><td>${(b.pickRate*100).toFixed(1)}%</td><td>${b.sampleSize}</td></tr>`).join('')}</tbody></table>`;
+        } catch { resEl.innerHTML = '<div style="color:var(--red)">Error loading builds.</div>'; }
+      });
+    }
+
+    // ─── Meta Tracker ─────────────────────────────────────────────────────
+    async function renderMeta(el) {
+      el.innerHTML = '<div style="color:var(--text-dim)">Loading meta data...</div>';
+      try {
+        const data = await apiFetch('/app/gaming/meta');
+        state.meta = data;
+      } catch { state.meta = null; }
+      if (!state.meta?.topCharacters?.length) {
+        el.innerHTML = '<div class="card"><div style="color:var(--text-dim);text-align:center;padding:40px">No meta data available yet. Meta snapshots are updated periodically.</div></div>';
+        return;
+      }
+      el.innerHTML = `
+        <div class="card">
+          <div class="card-title">Top Meta Characters — ${state.meta.game}</div>
+          <div class="meta-char-grid">
+            ${state.meta.topCharacters.map(c => `<div class="meta-char">
+              <div class="meta-char-name">${c.name}</div>
+              <div class="meta-char-wr">WR: ${(c.winRate * 100).toFixed(1)}%</div>
+              <div class="meta-char-pr">Pick: ${(c.pickRate * 100).toFixed(1)}%</div>
+            </div>`).join('')}
+          </div>
+        </div>
+        ${state.meta.topBuilds?.length ? `<div class="card">
+          <div class="card-title">Top Meta Builds</div>
+          <table class="build-table"><thead><tr><th>Character</th><th>Build</th><th>Win Rate</th></tr></thead>
+          <tbody>${state.meta.topBuilds.map(b => `<tr><td>${b.character}</td><td>${b.build}</td><td><div class="win-bar"><div class="win-bar-fill" style="width:${b.winRate*100}%"></div></div>${(b.winRate*100).toFixed(1)}%</td></tr>`).join('')}</tbody></table>
+        </div>` : ''}
+      `;
+    }
+
+    // ─── Rank Progression ─────────────────────────────────────────────────
+    async function renderRank(el) {
+      el.innerHTML = '<div style="color:var(--text-dim)">Loading rank history...</div>';
+      try {
+        const data = await apiFetch('/app/gaming/rank');
+        const entries = data.entries ?? [];
+        const trend = data.trend ?? 'stable';
+        if (!entries.length) {
+          el.innerHTML = '<div class="card"><div style="color:var(--text-dim);text-align:center;padding:40px">No rank data yet. Log games with your rank to see progression.</div></div>';
+          return;
+        }
+        const maxGames = Math.max(...entries.map(e => e.gamesPlayed));
+        el.innerHTML = `
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <div class="card-title" style="margin:0">Rank Progression</div>
+              <span class="badge badge-${trend === 'climbing' ? 'green' : trend === 'declining' ? 'red' : 'yellow'}">${trend}</span>
+            </div>
+            <div class="rank-track">
+              ${entries.map(e => `<div class="rank-bar" style="height:${Math.max(8, (e.gamesPlayed / maxGames) * 100)}px">
+                <div class="tooltip">${e.date} — ${e.rank} (${e.gamesPlayed} games)</div>
+              </div>`).join('')}
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Rank History</div>
+            <table class="build-table"><thead><tr><th>Date</th><th>Rank</th><th>Games</th></tr></thead>
+            <tbody>${entries.map(e => `<tr><td>${e.date}</td><td>${e.rank}</td><td>${e.gamesPlayed}</td></tr>`).join('')}</tbody></table>
+          </div>
+        `;
+      } catch { el.innerHTML = '<div class="card" style="color:var(--red)">Error loading rank data.</div>'; }
+    }
+
+    // ─── AI Coach Chat ────────────────────────────────────────────────────
+    function renderCoach(el) {
+      el.innerHTML = `
+        <div class="chat-container">
+          <div class="chat-messages" id="coach-messages">
+            <div class="chat-msg coach">
+              <div class="chat-avatar">🎮</div>
+              <div class="chat-bubble">Hey! I'm your PlayerLog AI Coach. I can help with game strategy, VOD review questions, build advice, or mental game tips. What's on your mind?</div>
+            </div>
+          </div>
+          <div class="chat-input-row">
+            <input type="text" id="coach-input" placeholder="Ask about strategy, builds, or how to improve..." autocomplete="off">
+            <button class="btn btn-cyan btn-sm" id="coach-send">Send</button>
+          </div>
+        </div>
+      `;
+      const input = document.getElementById('coach-input');
+      const sendBtn = document.getElementById('coach-send');
+      const msgs = document.getElementById('coach-messages');
+
+      async function send() {
+        const text = input.value.trim();
+        if (!text) return;
+        input.value = '';
+        msgs.innerHTML += `<div class="chat-msg user"><div class="chat-avatar">👤</div><div class="chat-bubble">${escHtml(text)}</div></div>`;
+        msgs.scrollTop = msgs.scrollHeight;
+        msgs.innerHTML += `<div class="chat-msg coach" id="typing"><div class="chat-avatar">🎮</div><div class="chat-bubble" style="color:var(--text-dim)">Thinking...</div></div>`;
+        msgs.scrollTop = msgs.scrollHeight;
+        try {
+          const data = await apiFetch('/app/gaming/coaching', { method: 'POST', body: JSON.stringify({ message: text }) });
+          document.getElementById('typing')?.remove();
+          msgs.innerHTML += `<div class="chat-msg coach"><div class="chat-avatar">🎮</div><div class="chat-bubble">${escHtml(data.response ?? data.coaching ?? 'No response')}</div></div>`;
+        } catch {
+          document.getElementById('typing')?.remove();
+          msgs.innerHTML += `<div class="chat-msg coach"><div class="chat-avatar">🎮</div><div class="chat-bubble" style="color:var(--red)">Connection error. Try again.</div></div>`;
+        }
+        msgs.scrollTop = msgs.scrollHeight;
+      }
+      sendBtn.addEventListener('click', send);
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+    }
+
+    // ─── Weakness Report ──────────────────────────────────────────────────
+    async function renderWeakness(el) {
+      el.innerHTML = '<div style="color:var(--text-dim)">Analyzing your gameplay...</div>';
+      try {
+        const data = await apiFetch('/app/gaming/weaknesses');
+        const weaknesses = data.weaknesses ?? [];
+        if (!weaknesses.length) {
+          el.innerHTML = '<div class="card"><div style="color:var(--text-dim);text-align:center;padding:40px">Not enough data to analyze weaknesses. Keep logging games!</div></div>';
+          return;
+        }
+        el.innerHTML = `<div class="card"><div class="card-title">Detected Weaknesses</div>
+          ${weaknesses.map(w => `<div class="weakness-card ${w.severity}">
+            <div class="weakness-cat">${w.category} · ${w.severity}</div>
+            <div class="weakness-desc">${w.description}</div>
+            <div class="weakness-tip">Evidence: ${w.evidence}</div>
+            <div class="weakness-tip" style="color:var(--cyan);margin-top:4px">Fix: ${w.suggestion}</div>
+          </div>`).join('')}
+        </div>`;
+      } catch { el.innerHTML = '<div class="card" style="color:var(--red)">Error analyzing weaknesses.</div>'; }
+    }
+
+    // ─── Mental Game Tips ─────────────────────────────────────────────────
+    function renderTips(el) {
+      const tips = [
+        { trigger: 'Tilt Control', tip: 'Take a 10-minute break after 2 consecutive losses. Your decision-making degrades faster than you notice.' },
+        { trigger: 'Win Streaks', tip: 'On a win streak? Stay humble, keep the same discipline. Complacency creates sloppy habits.' },
+        { trigger: 'Rank Focus', tip: 'Focus on improving your play, not your rank. Rank is a lagging indicator of skill — it will follow.' },
+        { trigger: 'Loss Recovery', tip: 'After a tough loss, write down ONE thing you learned before queuing again. Turn losses into lessons.' },
+        { trigger: 'Warm Up', tip: 'Warm up with 1-2 casual games or aim training before ranked. Cold starts cost MMR.' },
+        { trigger: 'Focus Blocks', tip: 'Play in blocks of 2-3 games max, then take a 5-minute break. Sustained focus degrades after ~90 minutes.' },
+        { trigger: 'Sleep', tip: 'Sleep deprivation cuts reaction time by 15-20%. Your mechanics are only as good as your rest.' },
+        { trigger: 'Active Review', tip: 'Review at least one replay per session. Active review accelerates improvement 3x over just playing.' },
+      ];
+      el.innerHTML = `<div class="card"><div class="card-title">Mental Game Tips</div>
+        ${tips.map(t => `<div class="tip-card"><div class="tip-label">${t.trigger}</div><div class="tip-text">${t.tip}</div></div>`).join('')}
+      </div>`;
+    }
+
+    function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    // Initial load
+    render();
+  </script>
+</body>
+</html>
